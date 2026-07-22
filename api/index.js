@@ -248,17 +248,7 @@ const transports = new Map();
 app.get('/api/mcp/sse', async (req, res) => {
   const mcpServer = createMcpServer();
   
-  // Clean protocol and host formatting for absolute SSE message URL
-  let protocol = req.headers['x-forwarded-proto'] || 'https';
-  if (protocol.includes(',')) {
-    protocol = protocol.split(',')[0].trim();
-  }
-  const host = req.headers['x-forwarded-host'] || req.headers.host || 'mcp-testing-todo.onrender.com';
-  const messageUrl = `${protocol}://${host}/api/mcp/message`;
-
-  console.log(`📡 New Remote SSE Connection initialized. Message Endpoint: ${messageUrl}`);
-
-  const transport = new SSEServerTransport(messageUrl, res);
+  const transport = new SSEServerTransport('/api/mcp/message', res);
   transports.set(transport.sessionId, transport);
 
   res.on('close', () => {
@@ -274,7 +264,8 @@ app.post('/api/mcp/message', async (req, res) => {
   if (!transport) {
     return res.status(404).json({ error: "Session not found" });
   }
-  await transport.handlePostMessage(req, res);
+  // Pass req.body as 3rd parameter because express.json() consumed the raw stream
+  await transport.handlePostMessage(req, res, req.body);
 });
 
 // Direct JSON-RPC HTTP POST handler for Remote MCP clients
