@@ -1,5 +1,8 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
 import {
@@ -19,11 +22,7 @@ app.use(cors({
 
 app.use(express.json());
 
-// Serve static frontend files if dist exists
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
-
+// Locate Frontend static build folder (dist)
 let __dirname;
 try {
   const __filename = fileURLToPath(import.meta.url);
@@ -32,15 +31,20 @@ try {
   __dirname = process.cwd();
 }
 
-const distPath = path.join(__dirname, '../dist');
+const distPath = fs.existsSync(path.join(process.cwd(), 'dist'))
+  ? path.join(process.cwd(), 'dist')
+  : path.join(__dirname, '../dist');
+
 if (fs.existsSync(distPath)) {
+  console.log(`✨ Serving Frontend UI from: ${distPath}`);
   app.use(express.static(distPath));
 }
 
-// --- Root Landing Page (Fallback when dist is building or standalone server) ---
+// --- Root Endpoint: Serves React UI if built, else fallback status page ---
 app.get('/', (req, res, next) => {
-  if (fs.existsSync(path.join(distPath, 'index.html'))) {
-    return res.sendFile(path.join(distPath, 'index.html'));
+  const indexPath = path.join(distPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
   }
 
   res.send(`
@@ -281,12 +285,14 @@ app.post('/api/mcp', async (req, res) => {
   }
 });
 
-// SPA fallback for frontend
-if (fs.existsSync(distPath)) {
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(distPath, 'index.html'));
-  });
-}
+// SPA fallback for frontend routes
+app.get('*', (req, res) => {
+  const indexPath = path.join(distPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  res.status(404).send('Page not found');
+});
 
 // Start HTTP server unless running as serverless function on Vercel
 const PORT = process.env.PORT || 3001;
