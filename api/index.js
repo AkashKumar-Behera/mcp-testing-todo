@@ -40,6 +40,72 @@ if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
 }
 
+// --- Shared MCP Core Tool Definitions & Logic ---
+const TOOL_DEFINITIONS = [
+  {
+    name: "add_reminder",
+    description: "Add a new scheduled task or reminder to the Todo list. Call when user asks to set a reminder.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        time: { type: "string", description: "Time of reminder e.g. '12:00 PM'" },
+        work: { type: "string", description: "Task description" }
+      },
+      required: ["time", "work"]
+    }
+  },
+  {
+    name: "get_reminders",
+    description: "Get all current reminders from the Todo list with Time | Work | Done status.",
+    inputSchema: { type: "object", properties: {} }
+  },
+  {
+    name: "toggle_reminder_status",
+    description: "Toggle completion status (Done/Not Done) of a reminder by ID.",
+    inputSchema: {
+      type: "object",
+      properties: { id: { type: "string", description: "Reminder ID" } },
+      required: ["id"]
+    }
+  },
+  {
+    name: "delete_reminder",
+    description: "Delete a reminder by ID.",
+    inputSchema: {
+      type: "object",
+      properties: { id: { type: "string", description: "Reminder ID" } },
+      required: ["id"]
+    }
+  }
+];
+
+const handleToolExecution = async (name, args = {}) => {
+  if (name === "add_reminder") {
+    const created = addReminder(args.time, args.work);
+    return {
+      content: [{ type: "text", text: `✅ Reminder set: ${created.time} | ${created.work} (ID: ${created.id})` }]
+    };
+  }
+  if (name === "get_reminders") {
+    const list = getAllReminders();
+    const rows = list.map((r, i) => `${i + 1}. [${r.id}] ${r.time} | ${r.work} | ${r.done ? "✅ Done" : "⏳ Pending"}`).join("\n");
+    return { content: [{ type: "text", text: list.length ? `📋 Reminders:\n${rows}` : "No reminders found." }] };
+  }
+  if (name === "toggle_reminder_status") {
+    const updated = toggleReminder(args.id);
+    return updated
+      ? { content: [{ type: "text", text: `Updated status for '${updated.work}' to: ${updated.done ? "Done" : "Pending"}` }] }
+      : { isError: true, content: [{ type: "text", text: "Reminder not found" }] };
+  }
+  if (name === "delete_reminder") {
+    const success = deleteReminder(args.id);
+    return success
+      ? { content: [{ type: "text", text: `Deleted reminder ${args.id}` }] }
+      : { isError: true, content: [{ type: "text", text: "Reminder not found" }] };
+  }
+  throw new Error(`Unknown tool: ${name}`);
+};
+
 // --- Root Endpoint: Serves React UI if built, else fallback status page ---
 app.get('/', (req, res, next) => {
   const indexPath = path.join(distPath, 'index.html');
@@ -165,73 +231,12 @@ const createMcpServer = () => {
   );
 
   mcpServer.setRequestHandler(ListToolsRequestSchema, async () => {
-    return {
-      tools: [
-        {
-          name: "add_reminder",
-          description: "Add a new scheduled task or reminder to the Todo list. Call when user asks to set a reminder.",
-          inputSchema: {
-            type: "object",
-            properties: {
-              time: { type: "string", description: "Time of reminder e.g. '12:00 PM'" },
-              work: { type: "string", description: "Task description" }
-            },
-            required: ["time", "work"]
-          }
-        },
-        {
-          name: "get_reminders",
-          description: "Get all current reminders from the Todo list with Time | Work | Done status.",
-          inputSchema: { type: "object", properties: {} }
-        },
-        {
-          name: "toggle_reminder_status",
-          description: "Toggle completion status (Done/Not Done) of a reminder by ID.",
-          inputSchema: {
-            type: "object",
-            properties: { id: { type: "string", description: "Reminder ID" } },
-            required: ["id"]
-          }
-        },
-        {
-          name: "delete_reminder",
-          description: "Delete a reminder by ID.",
-          inputSchema: {
-            type: "object",
-            properties: { id: { type: "string", description: "Reminder ID" } },
-            required: ["id"]
-          }
-        }
-      ]
-    };
+    return { tools: TOOL_DEFINITIONS };
   });
 
   mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
-    if (name === "add_reminder") {
-      const created = addReminder(args.time, args.work);
-      return {
-        content: [{ type: "text", text: `✅ Reminder set: ${created.time} | ${created.work} (ID: ${created.id})` }]
-      };
-    }
-    if (name === "get_reminders") {
-      const list = getAllReminders();
-      const rows = list.map((r, i) => `${i + 1}. [${r.id}] ${r.time} | ${r.work} | ${r.done ? "✅ Done" : "⏳ Pending"}`).join("\n");
-      return { content: [{ type: "text", text: list.length ? `📋 Reminders:\n${rows}` : "No reminders found." }] };
-    }
-    if (name === "toggle_reminder_status") {
-      const updated = toggleReminder(args.id);
-      return updated
-        ? { content: [{ type: "text", text: `Updated status for '${updated.work}' to: ${updated.done ? "Done" : "Pending"}` }] }
-        : { isError: true, content: [{ type: "text", text: "Reminder not found" }] };
-    }
-    if (name === "delete_reminder") {
-      const success = deleteReminder(args.id);
-      return success
-        ? { content: [{ type: "text", text: `Deleted reminder ${args.id}` }] }
-        : { isError: true, content: [{ type: "text", text: "Reminder not found" }] };
-    }
-    throw new Error(`Unknown tool: ${name}`);
+    return await handleToolExecution(name, args);
   });
 
   return mcpServer;
@@ -261,9 +266,8 @@ app.post('/api/mcp/message', async (req, res) => {
   await transport.handlePostMessage(req, res);
 });
 
-// JSON-RPC HTTP POST endpoint
+// Direct JSON-RPC HTTP POST handler for Remote MCP clients
 app.post('/api/mcp', async (req, res) => {
-  const mcpServer = createMcpServer();
   const { jsonrpc, id, method, params } = req.body || {};
 
   if (jsonrpc !== "2.0") {
@@ -272,11 +276,11 @@ app.post('/api/mcp', async (req, res) => {
 
   try {
     if (method === "tools/list") {
-      const tools = await mcpServer.requestHandlers.get("tools/list")?.({});
-      return res.json({ jsonrpc: "2.0", id, result: tools });
+      return res.json({ jsonrpc: "2.0", id, result: { tools: TOOL_DEFINITIONS } });
     }
     if (method === "tools/call") {
-      const result = await mcpServer.requestHandlers.get("tools/call")?.({ params });
+      const { name, arguments: args } = params || {};
+      const result = await handleToolExecution(name, args);
       return res.json({ jsonrpc: "2.0", id, result });
     }
     res.status(404).json({ jsonrpc: "2.0", id, error: { code: -32601, message: "Method not found" } });
