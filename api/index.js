@@ -19,6 +19,24 @@ app.use(cors({
 
 app.use(express.json());
 
+// Serve static frontend files if dist exists (Render fullstack support)
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+let __dirname;
+try {
+  const __filename = fileURLToPath(import.meta.url);
+  __dirname = path.dirname(__filename);
+} catch (e) {
+  __dirname = process.cwd();
+}
+
+const distPath = path.join(__dirname, '../dist');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+}
+
 // --- REST API Endpoints ---
 app.get('/api/reminders', (req, res) => {
   const reminders = getAllReminders();
@@ -205,7 +223,7 @@ app.post('/api/mcp/message', async (req, res) => {
   await transport.handlePostMessage(req, res);
 });
 
-// Direct JSON-RPC HTTP POST handler for Remote MCP clients (e.g. ChatGPT / Custom HTTP MCP callers)
+// JSON-RPC HTTP POST endpoint
 app.post('/api/mcp', async (req, res) => {
   const mcpServer = createMcpServer();
   const { jsonrpc, id, method, params } = req.body || {};
@@ -229,11 +247,18 @@ app.post('/api/mcp', async (req, res) => {
   }
 });
 
-// Fallback for Vercel Serverless
+// SPA fallback for frontend
+if (fs.existsSync(distPath)) {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
+
+// Start HTTP server unless running as serverless function on Vercel
 const PORT = process.env.PORT || 3001;
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+if (!process.env.VERCEL) {
   app.listen(PORT, () => {
-    console.log(`📡 Server listening at http://localhost:${PORT}`);
+    console.log(`🚀 MCP Scheduler Web & SSE Server listening on port ${PORT}`);
   });
 }
 

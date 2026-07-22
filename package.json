@@ -2,24 +2,25 @@
   "name": "mcp-scheduler-todo",
   "version": "1.0.0",
   "type": "module",
-  "main": "server/mcp-server.js",
+  "main": "api/index.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "start": "node api/index.js",
     "server": "node server/api.js",
     "mcp": "node server/mcp-server.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
-    "cors": "^2.8.6",
-    "express": "^5.2.1",
-    "lucide-react": "^1.25.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "@modelcontextprotocol/sdk": "^1.6.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "lucide-react": "^0.475.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^6.0.4",
-    "vite": "^8.1.5"
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^6.1.0"
   }
 }
