@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "scheduler-todo-local": {
+      "command": "node",
+      "args": [
+        "A:/Development/todo/server/mcp-server.js"
+      ]
+    },
+    "scheduler-todo-remote-vercel": {
+      "url": "https://<your-vercel-app-name>.vercel.app/api/mcp/sse",
+      "headers": {
+        "Content-Type": "application/json"
+      }
+    }
+  }
+}
