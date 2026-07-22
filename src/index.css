@@ -208,7 +208,6 @@ body {
   border-color: rgba(6, 182, 212, 0.4);
 }
 
-/* MCP Log Stream Banner */
 .mcp-log-banner {
   margin-top: 1.25rem;
   background: rgba(139, 92, 246, 0.1);
@@ -260,7 +259,6 @@ body {
   color: var(--text-muted);
 }
 
-/* Custom Table */
 .scheduler-table {
   width: 100%;
   border-collapse: collapse;
@@ -309,7 +307,6 @@ body {
   color: var(--text-subtle);
 }
 
-/* Status Pill */
 .status-pill {
   display: inline-flex;
   align-items: center;
@@ -373,39 +370,96 @@ body {
   font-size: 0.95rem;
 }
 
-/* Footer / Instructions */
+/* One-Click Connect Tabbed Panel */
 .mcp-info-panel {
   margin-top: 2.5rem;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px dashed rgba(255, 255, 255, 0.12);
-  border-radius: 16px;
-  padding: 1.5rem;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 1.75rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
 }
 
 .mcp-info-title {
-  font-size: 0.95rem;
+  font-size: 1.05rem;
   font-weight: 700;
-  margin-bottom: 0.75rem;
-  color: var(--accent-purple);
+  margin-bottom: 1.25rem;
+  color: var(--accent-cyan);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.tab-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.75rem;
+}
+
+.tab-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  transition: all 0.2s ease;
 }
 
-.mcp-info-text {
+.tab-btn:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tab-btn.active {
+  background: rgba(6, 182, 212, 0.15);
+  color: var(--accent-cyan);
+  border-color: rgba(6, 182, 212, 0.4);
+}
+
+.copy-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   font-size: 0.85rem;
-  line-height: 1.6;
   color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+.copy-btn {
+  background: rgba(6, 182, 212, 0.15);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  color: var(--accent-cyan);
+  padding: 0.35rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s ease;
+}
+
+.copy-btn:hover {
+  background: rgba(6, 182, 212, 0.25);
 }
 
 .mcp-code-block {
-  margin-top: 1rem;
   background: #030712;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 1rem;
+  border-radius: 12px;
+  padding: 1.2rem;
   font-family: var(--font-mono);
-  font-size: 0.8rem;
+  font-size: 0.83rem;
   color: #a7f3d0;
   overflow-x: auto;
+  line-height: 1.5;
 }

@@ -3,14 +3,15 @@ import {
   Clock, 
   Calendar, 
   CheckCircle2, 
-  XCircle, 
   Sparkles, 
   Trash2, 
   Cpu, 
   Terminal, 
-  PlusCircle, 
-  Check, 
-  Hourglass 
+  Hourglass,
+  Copy,
+  Check,
+  Globe,
+  Bot
 } from 'lucide-react';
 
 export default function App() {
@@ -18,8 +19,12 @@ export default function App() {
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [mcpLog, setMcpLog] = useState('');
-  const [manualTime, setManualTime] = useState('12:00 PM');
-  const [manualWork, setManualWork] = useState('');
+  const [copiedTab, setCopiedTab] = useState(null);
+  const [activeConfigTab, setActiveConfigTab] = useState('claude');
+
+  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : 'https://mcp-testing-todo.onrender.com';
+  const remoteSseUrl = `${currentOrigin}/api/mcp/sse`;
+  const remoteJsonRpcUrl = `${currentOrigin}/api/mcp`;
 
   // Sample quick prompt chips
   const promptExamples = [
@@ -28,6 +33,17 @@ export default function App() {
     "set a reminder for Doctor Appointment at 10:00 AM",
     "remind me for Gym Session at 6:00 PM"
   ];
+
+  // Config snippets for one-click copy
+  const claudeConfig = JSON.stringify({
+    "mcpServers": {
+      "scheduler-todo-remote": {
+        "url": remoteSseUrl
+      }
+    }
+  }, null, 2);
+
+  const aiSystemPrompt = `You are connected to Remote MCP Server at ${remoteSseUrl}. Use tool 'add_reminder' with arguments { time: "...", work: "..." } whenever I ask to set a reminder or schedule a task.`;
 
   // Fetch reminders from API
   const fetchReminders = async () => {
@@ -42,14 +58,12 @@ export default function App() {
     }
   };
 
-  // Auto-refresh every 2 seconds to catch updates from MCP server calls
   useEffect(() => {
     fetchReminders();
     const interval = setInterval(fetchReminders, 2000);
     return () => clearInterval(interval);
   }, []);
 
-  // Submit Natural Language Prompt (Simulating MCP Natural Language Tool Execution)
   const handlePromptSubmit = async (e) => {
     e.preventDefault();
     if (!prompt.trim()) return;
@@ -75,7 +89,6 @@ export default function App() {
     }
   };
 
-  // Toggle status (Done / Not Done)
   const handleToggle = async (id) => {
     try {
       const res = await fetch(`/api/reminders/${id}/toggle`, { method: 'PATCH' });
@@ -89,7 +102,6 @@ export default function App() {
     }
   };
 
-  // Delete reminder
   const handleDelete = async (id) => {
     try {
       const res = await fetch(`/api/reminders/${id}`, { method: 'DELETE' });
@@ -103,14 +115,15 @@ export default function App() {
     }
   };
 
-  // Quick prompt chip click handler
-  const handleChipClick = (example) => {
-    setPrompt(example);
+  const copyToClipboard = (text, key) => {
+    navigator.clipboard.writeText(text);
+    setCopiedTab(key);
+    setTimeout(() => setCopiedTab(null), 2000);
   };
 
   return (
     <div className="app-container">
-      {/* App Header */}
+      {/* Header */}
       <header className="app-header">
         <div className="brand">
           <div className="brand-icon">
@@ -124,7 +137,7 @@ export default function App() {
 
         <div className="mcp-badge">
           <span className="dot-pulse"></span>
-          <span>MCP Server Connected (Stdio)</span>
+          <span>Remote MCP Server (SSE Active)</span>
         </div>
       </header>
 
@@ -152,13 +165,12 @@ export default function App() {
         <div className="prompt-chips">
           <span className="chip-label">Try Examples:</span>
           {promptExamples.map((ex, i) => (
-            <button key={i} className="chip" onClick={() => handleChipClick(ex)}>
+            <button key={i} className="chip" onClick={() => setPrompt(ex)}>
               "{ex}"
             </button>
           ))}
         </div>
 
-        {/* MCP Execution Log Banner */}
         {mcpLog && (
           <div className="mcp-log-banner">
             <Terminal size={16} />
@@ -183,7 +195,7 @@ export default function App() {
 
         {reminders.length === 0 ? (
           <div className="empty-state">
-            No reminders scheduled. Use the prompt box above or MCP tools to set one!
+            No reminders scheduled. Use the prompt box above or connect an AI agent to set one!
           </div>
         ) : (
           <table className="scheduler-table">
@@ -198,22 +210,17 @@ export default function App() {
             <tbody>
               {reminders.map((item) => (
                 <tr key={item.id}>
-                  {/* TIME Column */}
                   <td>
                     <div className="time-cell">
                       <Clock size={16} />
                       <span>{item.time}</span>
                     </div>
                   </td>
-
-                  {/* WORK Column */}
                   <td>
                     <span className={`work-cell ${item.done ? 'work-completed' : ''}`}>
                       {item.work}
                     </span>
                   </td>
-
-                  {/* DONE OR NOT Column */}
                   <td>
                     <span 
                       className={`status-pill ${item.done ? 'done' : 'pending'}`}
@@ -233,8 +240,6 @@ export default function App() {
                       )}
                     </span>
                   </td>
-
-                  {/* Action Column */}
                   <td>
                     <div className="actions-cell">
                       <button 
@@ -253,30 +258,80 @@ export default function App() {
         )}
       </section>
 
-      {/* MCP Integration Details */}
+      {/* One-Click Connect AI Agents Section */}
       <section className="mcp-info-panel">
         <div className="mcp-info-title">
-          <Terminal size={18} />
-          <span>How MCP Server works under the hood</span>
+          <Globe size={20} color="#06b6d4" />
+          <span>⚡ One-Click Connect to Any AI Agent (Claude, Cursor, ChatGPT)</span>
         </div>
-        <p className="mcp-info-text">
-          A Standalone MCP Server runs at <code>server/mcp-server.js</code> exposing standard tools like 
-          <code>add_reminder</code>, <code>get_reminders</code>, <code>toggle_reminder_status</code>, and <code>delete_reminder</code>. 
-          When an AI model receives a command like <em>"set a reminder for meeting at 12 pm"</em>, it automatically calls the 
-          <code>add_reminder</code> tool via the Model Context Protocol.
-        </p>
 
-        <pre className="mcp-code-block">
-{`// Register with Antigravity / Claude Desktop in mcp-config.json:
-{
-  "mcpServers": {
-    "scheduler-todo": {
-      "command": "node",
-      "args": ["A:/Development/todo/server/mcp-server.js"]
-    }
-  }
-}`}
-        </pre>
+        <div className="tab-buttons">
+          <button 
+            className={`tab-btn ${activeConfigTab === 'claude' ? 'active' : ''}`}
+            onClick={() => setActiveConfigTab('claude')}
+          >
+            <Bot size={16} /> Claude / Cursor / Antigravity JSON
+          </button>
+          <button 
+            className={`tab-btn ${activeConfigTab === 'chatgpt' ? 'active' : ''}`}
+            onClick={() => setActiveConfigTab('chatgpt')}
+          >
+            <Globe size={16} /> ChatGPT / HTTP Endpoint
+          </button>
+          <button 
+            className={`tab-btn ${activeConfigTab === 'prompt' ? 'active' : ''}`}
+            onClick={() => setActiveConfigTab('prompt')}
+          >
+            <Sparkles size={16} /> AI System Prompt
+          </button>
+        </div>
+
+        <div className="config-content">
+          {activeConfigTab === 'claude' && (
+            <div>
+              <div className="copy-header">
+                <span>Copy into your <code>mcp-config.json</code> or Claude/Cursor settings:</span>
+                <button 
+                  className="copy-btn"
+                  onClick={() => copyToClipboard(claudeConfig, 'claude')}
+                >
+                  {copiedTab === 'claude' ? <><Check size={14} color="#10b981" /> Copied!</> : <><Copy size={14} /> Copy Config</>}
+                </button>
+              </div>
+              <pre className="mcp-code-block">{claudeConfig}</pre>
+            </div>
+          )}
+
+          {activeConfigTab === 'chatgpt' && (
+            <div>
+              <div className="copy-header">
+                <span>Remote MCP HTTP URL for ChatGPT Custom Actions:</span>
+                <button 
+                  className="copy-btn"
+                  onClick={() => copyToClipboard(remoteJsonRpcUrl, 'chatgpt')}
+                >
+                  {copiedTab === 'chatgpt' ? <><Check size={14} color="#10b981" /> Copied!</> : <><Copy size={14} /> Copy URL</>}
+                </button>
+              </div>
+              <pre className="mcp-code-block">{remoteJsonRpcUrl}</pre>
+            </div>
+          )}
+
+          {activeConfigTab === 'prompt' && (
+            <div>
+              <div className="copy-header">
+                <span>Copy Natural Language System Instructions for AI Agent:</span>
+                <button 
+                  className="copy-btn"
+                  onClick={() => copyToClipboard(aiSystemPrompt, 'prompt')}
+                >
+                  {copiedTab === 'prompt' ? <><Check size={14} color="#10b981" /> Copied!</> : <><Copy size={14} /> Copy Prompt</>}
+                </button>
+              </div>
+              <pre className="mcp-code-block">{aiSystemPrompt}</pre>
+            </div>
+          )}
+        </div>
       </section>
     </div>
   );
