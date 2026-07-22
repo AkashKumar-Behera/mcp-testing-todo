@@ -248,10 +248,15 @@ const transports = new Map();
 app.get('/api/mcp/sse', async (req, res) => {
   const mcpServer = createMcpServer();
   
-  // Construct absolute message URL so MCP Clients (Cursor/Roo/Claude) receive full POST URL
+  // Clean protocol and host formatting for absolute SSE message URL
+  let protocol = req.headers['x-forwarded-proto'] || 'https';
+  if (protocol.includes(',')) {
+    protocol = protocol.split(',')[0].trim();
+  }
   const host = req.headers['x-forwarded-host'] || req.headers.host || 'mcp-testing-todo.onrender.com';
-  const protocol = req.headers['x-forwarded-proto'] || 'https';
   const messageUrl = `${protocol}://${host}/api/mcp/message`;
+
+  console.log(`📡 New Remote SSE Connection initialized. Message Endpoint: ${messageUrl}`);
 
   const transport = new SSEServerTransport(messageUrl, res);
   transports.set(transport.sessionId, transport);
