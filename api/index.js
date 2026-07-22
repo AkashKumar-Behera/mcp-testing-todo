@@ -19,7 +19,7 @@ app.use(cors({
 
 app.use(express.json());
 
-// Serve static frontend files if dist exists (Render fullstack support)
+// Serve static frontend files if dist exists
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -36,6 +36,40 @@ const distPath = path.join(__dirname, '../dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
 }
+
+// --- Root Landing Page (Fallback when dist is building or standalone server) ---
+app.get('/', (req, res, next) => {
+  if (fs.existsSync(path.join(distPath, 'index.html'))) {
+    return res.sendFile(path.join(distPath, 'index.html'));
+  }
+
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>MCP Remote Scheduler Server - LIVE</title>
+        <style>
+          body { font-family: -apple-system, sans-serif; background: #090d16; color: #f3f4f6; padding: 3rem; text-align: center; }
+          .card { max-width: 600px; margin: 0 auto; background: #121a2b; padding: 2rem; border-radius: 16px; border: 1px solid rgba(255,255,255,0.1); }
+          h1 { color: #06b6d4; margin-bottom: 0.5rem; }
+          p { color: #9ca3af; line-height: 1.6; }
+          .badge { display: inline-block; background: rgba(16,185,129,0.2); color: #10b981; padding: 0.4rem 1rem; border-radius: 9999px; font-weight: bold; margin-bottom: 1.5rem; }
+          code { background: #030712; padding: 0.4rem 0.8rem; border-radius: 6px; color: #a7f3d0; font-family: monospace; display: block; margin: 1rem 0; word-break: break-all; }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="badge">● REMOTE MCP SERVER IS LIVE</div>
+          <h1>MCP Smart Scheduler Server</h1>
+          <p>The Model Context Protocol (MCP) server is running and ready for SSE remote connections.</p>
+          <h3>Your Remote MCP SSE Endpoint:</h3>
+          <code>https://mcp-testing-todo.onrender.com/api/mcp/sse</code>
+          <p>Connect this URL in Claude Desktop, Claude Code, Cursor, or ChatGPT!</p>
+        </div>
+      </body>
+    </html>
+  `);
+});
 
 // --- REST API Endpoints ---
 app.get('/api/reminders', (req, res) => {
